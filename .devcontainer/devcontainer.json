@@ -1,0 +1,9 @@
+{
+  "name": "Ruby 3.3.5 Dev Container",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "remoteUser": "root",
+  "workspaceFolder": "/app", // コンテナ内の作業ディレクトリ
+  "workspaceMount": "source=${localWorkspaceFolder},target=/app,type=bind" // ホストとコンテナのディレクトリ同期設定
+}
