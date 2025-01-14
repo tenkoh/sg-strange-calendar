@@ -28,6 +28,10 @@ class SgStrangeCalendar
     "#{@year} #{all_weekdays.join(" ")}"
   end
 
+  def vertical_header
+    "#{@year} #{@months.join(" ")}"
+  end
+
   # カレンダーに表示する曜日(文字列)を全て収めた配列を返す
   def all_weekdays
     weekdays = @weekdays
@@ -35,6 +39,28 @@ class SgStrangeCalendar
   end
 
   def generate(vertical: false)
+    return generate_vertical if vertical
+    generate_horizontal
+  end
+
+  def generate_vertical
+    calendar = vertical_header
+    calendar << "\n"
+    lines = all_weekdays.map.with_index(1) do | weekday, index |
+      line = "" # メモ：line = weekday とすると変数が使いまわされて意図せぬ出力になった
+      line << weekday
+      line << "    " # 曜日ラベルと日付の間のスペース
+      line << (1..12).map do | month |
+        date = @raw_calendar[CalendarPos.new(month, index)]
+        @prettyPrinter.print(date)
+      end.join("  ")
+      adjust_space(line)
+    end
+    calendar << lines.join("\n")
+    calendar
+  end
+
+  def generate_horizontal
     calendar = horizontal_header
     calendar << "\n"
     lines = (1..12).map do | month |
@@ -45,12 +71,17 @@ class SgStrangeCalendar
         date = @raw_calendar[CalendarPos.new(month, index)]
         @prettyPrinter.print(date)
       end.join(" ")
-      line = line.gsub(/ (\[\d{2}\])/) { $1 } # [10]のような2桁パターンの前スペースを削除して詰める
-      line = line.gsub("] ", "]") # 桁数関係なく]の後置スペースは詰める
-      line.strip
+      adjust_space(line)
     end
     calendar << lines.join("\n")
     calendar
+  end
+
+  # 日付間のスペースや、行末の不要なスペースを除去して、各行の出力を確定させる
+  def adjust_space(line)
+      line = line.gsub(/ (\[\d{2}\])/) { $1 } # [10]のような2桁パターンの前スペースを削除して詰める
+      line = line.gsub("] ", "]") # 桁数関係なく]の後置スペースは詰める
+      line.strip
   end
 end
 
