@@ -21,7 +21,7 @@ class SgStrangeCalendar
       end
     end.to_h
 
-    @prettyPrinter = PrettyDayPrinter.new(2)
+    @prettyPrinter = HighlightPrinter.new(2, today)
   end
 
   def horizontal_header
@@ -43,8 +43,10 @@ class SgStrangeCalendar
       line << "  "
       line << all_weekdays.map.with_index(1) do | _, index |
         date = @raw_calendar[CalendarPos.new(month, index)]
-        @prettyPrinter.pretty(date.nil? ? "" : date.day)
+        @prettyPrinter.print(date)
       end.join(" ")
+      line = line.gsub(/ (\[\d{2}\])/) { $1 } # [10]のような2桁パターンの前スペースを削除して詰める
+      line = line.gsub("] ", "]") # 桁数関係なく]の後置スペースは詰める
       line.strip
     end
     calendar << lines.join("\n")
@@ -52,13 +54,29 @@ class SgStrangeCalendar
   end
 end
 
-class PrettyDayPrinter
+class WithPaddingPrinter
   def initialize(padding)
     @padding = padding
+    @blank = " " * padding
   end
 
-  # 数字かnilを受け取り、to_sしてからパディングで埋めて返す
-  def pretty(day)
-    day.to_s.rjust(@padding, ' ')
+  # Dateかnilを受け取り、日付をパディングで埋めて返す
+  def print(date)
+    return @blank if date.nil?
+
+    date.day.to_s.rjust(@padding, ' ')
+  end
+end
+
+class HighlightPrinter < WithPaddingPrinter
+  def initialize(padding, today=nil)
+    super(padding)
+    @today = today
+  end
+
+  def print(date)
+    return super(date) if @today.nil? || date != @today
+
+    "[#{date.day}]"
   end
 end
