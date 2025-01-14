@@ -1,18 +1,11 @@
 require 'date'
 
 class SgStrangeCalendar
-  # カレンダー上の配置を表す構造体
-  # 1月の、日曜日を起点として4日目であればCalendarPos.new(1,4)と表す(1-index)
-  CalendarPos = Struct.new(:month, :dayCount)
-
-  WEEKDAYS = %w[Su Mo Tu We Th Fr Sa]
-  MONTHS = %w[Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec]
-
   def initialize(year, today = nil)
     @year = year
-    # カレンダー上の配置をキー、Dateオブジェクトを値としたハッシュ
-    # rawCalendar[CalendarPos(1,10)]でDateオブジェクトを取得できる
-    # 対応する日付が存在しない場合はnilが返ってくる
+    # カレンダー上の配置をキー、Dateオブジェクトを値としたハッシュを生成しておく。
+    # rawCalendar[CalendarPos.new(1,10)]でDateオブジェクトを取得できる。
+    # 対応する日付が存在しない場合はnilが返ってくる。
     @raw_calendar = (1..12).flat_map do | month |
       firstDay = Date.new(year, month, 1)
       lastDay = Date.new(year, month, -1)
@@ -25,8 +18,21 @@ class SgStrangeCalendar
     @prettyPrinter = HighlightPrinter.new(2, today)
   end
 
+  def generate(vertical: false)
+    vertical ? generate_vertical : generate_horizontal
+  end
+
+  private
+
+  # カレンダー上の配置を表す構造体
+  # 1月の、日曜日を起点として4日目であればCalendarPos.new(1,4)と表す(1-index)
+  CalendarPos = Struct.new(:month, :day_count)
+
+  WEEKDAYS = %w[Su Mo Tu We Th Fr Sa].freeze
+  MONTHS = %w[Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec].freeze
+
   def horizontal_header
-    "#{@year} #{all_weekdays.join(" ")}"
+    "#{@year} #{display_weekdays.join(" ")}"
   end
 
   def vertical_header
@@ -34,43 +40,30 @@ class SgStrangeCalendar
   end
 
   # カレンダーに表示する曜日(文字列)を全て収めた配列を返す
-  def all_weekdays
-    WEEKDAYS * 5 + WEEKDAYS[0, 2]
+  def display_weekdays
+    WEEKDAYS.cycle.take(37)
   end
 
-  def generate(vertical: false)
-    vertical ? generate_vertical : generate_horizontal
+  # 桁数調整や日付の協調表示を済ませた文字列を返す
+  def get_pretty_date(month, day_count)
+    @prettyPrinter.print(@raw_calendar[CalendarPos.new(month, day_count)])
   end
 
   def generate_vertical
-    calendar = vertical_header
-    calendar << "\n"
-    lines = all_weekdays.map.with_index(1) do | weekday, index |
-      line = "#{weekday}    #{
-        (1..12).map do | month |
-          date = @raw_calendar[CalendarPos.new(month, index)]
-          @prettyPrinter.print(date)
-        end.join("  ")}"
-      adjust_space(line)
+    calendar_body = display_weekdays.map.with_index(1) do |weekday, index|
+      days = (1..12).map { |month| get_pretty_date(month, index)}
+      adjust_space("#{weekday}    #{days.join("  ")}")
     end
-    calendar << lines.join("\n")
-    calendar
+    [vertical_header, *calendar_body].join("\n")
   end
 
   def generate_horizontal
-    calendar = horizontal_header
-    calendar << "\n"
-    lines = (1..12).map do | month |
+    calendar_body = (1..12).map do |month|
       month_index = month - 1
-      line = "#{MONTHS[month_index]}  #{
-        all_weekdays.map.with_index(1) do | _, index |
-          date = @raw_calendar[CalendarPos.new(month, index)]
-          @prettyPrinter.print(date)
-        end.join(" ")}"
-      adjust_space(line)
+      days = display_weekdays.map.with_index(1) { |weekday, index| get_pretty_date(month, index)}
+      adjust_space("#{MONTHS[month_index]}  #{days.join(" ")}")
     end
-    calendar << lines.join("\n")
-    calendar
+    [horizontal_header, *calendar_body].join("\n")
   end
 
   # 日付間のスペースや、行末の不要なスペースを除去して、各行の出力を確定させる
